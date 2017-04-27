@@ -42,11 +42,12 @@ int room2trays34 = 14;      // WeMos D1 Mini Pro pin D5
 bool readyToPickTray = true;
 bool readyToPickDuration = false;
 int currentTraySelection;
-int currentDurationSelection;
+int currentDurationSelection;                   // In seconds, run duration (timer) selected from the app
 bool readyToStartStatus = false;
 bool auto12start, auto34start, man12start, man34start; // True when valve first opens.
 bool auto12run, auto34run, man12run, man34run;      // True when valve is open.
 unsigned long startTime12, startTime34;             // Unix time when valve first opened.
+unsigned long stopTime12, stopTime34;               // Unix time when valve will close.
 
 void setup()
 {
@@ -104,7 +105,7 @@ void setup()
 
   timer.setInterval(2000L, runOnceSub);
   timer.setInterval(1000L, timeSetAndCheck);
-  timer.setInterval(750L, runTimer);
+  timer.setInterval(500L, runTimer);
   timer.setInterval(1000L, stopWatcher);
 }
 
@@ -133,10 +134,10 @@ void runOnceSub() {
   }
 }
 
-void runTimer() {
+void runTimer() {   // This simply takes a start condition, sets those tanks as running, logs the start time, sets the end time, etc.
   if (auto12start == true) {    // If something started
     startTime12 = now();        // set the start time
-    auto12run = true;           // set that something is runnnig
+    auto12run = true;           // set that something is running
     auto12start = false;        // and "lock out" the start condition.
   }
   if (auto34start == true) {
@@ -157,14 +158,47 @@ void runTimer() {
 }
 
 void stopWatcher() {
-  if (man12run == true && man34run == false) {
-    Blynk.virtualWrite(V7, String("Tray 1/2 ") + (now() - startTime12) + "s | Tray 3/4 OFF");
+  int i = ((stopTime12 - now()) / 60);
+  
+  // Tray 1 & 2 only are MANUALLY selected and stopwatch is LESS than 10 seconds
+  if (man12run == true && man34run == false && ((now() - startTime12) - (60 * ((now() - startTime12) / 60))) < 10) {
+    Blynk.virtualWrite(V7, String("Tray 1/2 ") + ((now() - startTime12) / 60) + ":0" + ((now() - startTime12) - (60 * ((now() - startTime12) / 60))) + " | Tray 3/4 OFF");
   }
-  else if (man12run == false && man34run == true) {
-    Blynk.virtualWrite(V7, String("Tray 1/2 OFF | Tray 3/4 ") + (now() - startTime34) + "s");
+  // Tray 1 & 2 only are MANUALLY selected and stopwatch is GREATER than 9 seconds
+  else if (man12run == true && man34run == false && ((now() - startTime12) - (60 * ((now() - startTime12) / 60))) > 9) {
+    Blynk.virtualWrite(V7, String("Tray 1/2 ") + ((now() - startTime12) / 60) + ":" + ((now() - startTime12) - (60 * ((now() - startTime12) / 60))) + " | Tray 3/4 OFF");
   }
-  else if (man12run == true && man34run == true) {
-    Blynk.virtualWrite(V7, String("Tray 1/2 ") + (now() - startTime12) + "s | Tray 3/4 " + (now() - startTime34) + "s");
+  // Tray 3 & 4 only are MANUALLY selected and stopwatch is LESS than 10 seconds
+  else if (man12run == false && man34run == true && ((now() - startTime34) - (60 * ((now() - startTime34) / 60))) < 10) {
+    Blynk.virtualWrite(V7, String("Tray 1/2 OFF | Tray 3/4 ") + ((now() - startTime34) / 60) + ":0" + ((now() - startTime34) - (60 * ((now() - startTime34) / 60))));
+  }
+  // Tray 3 & 4 only are MANUALLY selected and stopwatch is GREATER than 9 seconds
+  else if (man12run == false && man34run == true && ((now() - startTime34) - (60 * ((now() - startTime34) / 60))) > 9) {
+    Blynk.virtualWrite(V7, String("Tray 1/2 OFF | Tray 3/4 ") + ((now() - startTime34) / 60) + ":" + ((now() - startTime34) - (60 * ((now() - startTime34) / 60))));
+  }
+  // Tray 1&2 and 3&4 are MANUALLY selected and stopwatch is LESS than 10 seconds
+  else if (man12run == true && man34run == true && ((now() - startTime12) - (60 * ((now() - startTime12) / 60))) < 10 && ((now() - startTime34) - (60 * ((now() - startTime34) / 60))) < 10) {
+    Blynk.virtualWrite(V7, String("Tray 1/2 ") + ((now() - startTime12) / 60) + ":0" + ((now() - startTime12) - (60 * ((now() - startTime12) / 60))) + " | Tray 3/4 " + ((now() - startTime34) / 60) + ":0" + ((now() - startTime34) - (60 * ((now() - startTime34) / 60))));
+  }
+  // Tray 1&2 and 3&4 are MANUALLY selected and stopwatch is GREATER than 9 seconds
+  else if (man12run == true && man34run == true && ((now() - startTime12) - (60 * ((now() - startTime12) / 60))) > 9 && ((now() - startTime34) - (60 * ((now() - startTime34) / 60))) > 9) {
+    Blynk.virtualWrite(V7, String("Tray 1/2 ") + ((now() - startTime12) / 60) + ":" + ((now() - startTime12) - (60 * ((now() - startTime12) / 60))) + " | Tray 3/4 " + ((now() - startTime34) / 60) + ":" + ((now() - startTime34) - (60 * ((now() - startTime34) / 60))));
+  }
+  // Tray 1&2 and 3&4 are MANUALLY selected and stopwatch is LESS than 10 seconds for man12 but not man34
+  else if (man12run == true && man34run == true && ((now() - startTime12) - (60 * ((now() - startTime12) / 60))) < 10 && ((now() - startTime34) - (60 * ((now() - startTime34) / 60))) > 9) {
+    Blynk.virtualWrite(V7, String("Tray 1/2 ") + ((now() - startTime12) / 60) + ":0" + ((now() - startTime12) - (60 * ((now() - startTime12) / 60))) + " | Tray 3/4 " + ((now() - startTime34) / 60) + ":" + ((now() - startTime34) - (60 * ((now() - startTime34) / 60))));
+  }
+  // Tray 1&2 and 3&4 are MANUALLY selected and stopwatch is GREATER than 9 seconds for man34 but not man12
+  else if (man12run == true && man34run == true && ((now() - startTime12) - (60 * ((now() - startTime12) / 60))) > 9 && ((now() - startTime34) - (60 * ((now() - startTime34) / 60))) < 10) {
+    Blynk.virtualWrite(V7, String("Tray 1/2 ") + ((now() - startTime12) / 60) + ":" + ((now() - startTime12) - (60 * ((now() - startTime12) / 60))) + " | Tray 3/4 " + ((now() - startTime34) / 60) + ":0" + ((now() - startTime34) - (60 * ((now() - startTime34) / 60))));
+  }
+  // Tray 1 & 2 only are AUTOMATICALLY selected and stopwatch is LESS than 10 seconds
+  else if (auto12run == true && auto34run == false && ((stopTime12 - now()) - (i * 60)) < 10) {
+    Blynk.virtualWrite(V7, String("Tray 1/2 ") + i + ":0" + ((stopTime12 - now()) - (i * 60)));
+  }
+  // Tray 1 & 2 only are AUTOMATICALLY selected and stopwatch is GREATER than 9 seconds
+  else if (auto12run == true && auto34run == false && ((stopTime12 - now()) - (i * 60)) > 9) {
+    Blynk.virtualWrite(V7, String("Tray 1/2 ") + i + ":" + ((stopTime12 - now()) - (i * 60)));
   }
   else {
     Blynk.virtualWrite(V7, "Watering system OFF");
@@ -191,7 +225,9 @@ BLYNK_WRITE(V0)  // Trays 1 & 2 manual button
   {
     digitalWrite(room1trays12, HIGH);
     Blynk.setProperty(V0, "onLabel", "MANUAL RUN");
-    man12start = true;
+    if (auto12run == false) {
+      man12start = true;
+    }
   }
   if (pinData == 0) // Normal button state
   {
@@ -200,6 +236,7 @@ BLYNK_WRITE(V0)  // Trays 1 & 2 manual button
     terminal.println(String(currentTime) + " Trays 1 & 2 watered for " + (now() - startTime12) + "s.");
     terminal.flush();
     man12run = false;
+    auto12run = false;
   }
 }
 
@@ -211,7 +248,9 @@ BLYNK_WRITE(V1)  // Trays 3 & 4 manual button
   {
     digitalWrite(room1trays34, HIGH);
     Blynk.setProperty(V1, "onLabel", "MANUAL RUN");
-    man34start = true;
+    if (auto34run == false) {
+      man34start = true;
+    }
   }
   if (pinData == 0) // Normal button state
   {
@@ -220,6 +259,7 @@ BLYNK_WRITE(V1)  // Trays 3 & 4 manual button
     terminal.println(String(currentTime) + " Trays 3 & 4 watered for " + (now() - startTime34) + "s.");
     terminal.flush();
     man34run = false;
+    auto34run = false;
   }
 }
 
@@ -246,31 +286,31 @@ BLYNK_WRITE(V4) {   // Run duration
   {
     case 2:
       if (readyToPickDuration == true) {
-        currentDurationSelection = 1;
+        currentDurationSelection = 60;   // 1m
         readyToStartStatus = true;
       }
       break;
     case 3:
       if (readyToPickDuration == true) {
-        currentDurationSelection = 5;
+        currentDurationSelection = 300;  // 5m
         readyToStartStatus = true;
       }
       break;
     case 4:
       if (readyToPickDuration == true) {
-        currentDurationSelection = 10;
+        currentDurationSelection = 600;  // 10m
         readyToStartStatus = true;
       }
       break;
     case 5:
       if (readyToPickDuration == true) {
-        currentDurationSelection = 20;
+        currentDurationSelection = 1200;  // 20m
         readyToStartStatus = true;
       }
       break;
     case 6:
       if (readyToPickDuration == true) {
-        currentDurationSelection = 30;
+        currentDurationSelection = 1800;   // 30m
         readyToStartStatus = true;
       }
       break;
@@ -283,14 +323,16 @@ BLYNK_WRITE(V5) // Start watering button
 
   if (pinData == 1 && currentTraySelection == 12 && currentDurationSelection != 0)
   {
-    terminal.println(String(currentTime) + " Watering trays 1 & 2 for " + currentDurationSelection + "m");
+    terminal.println(String(currentTime) + " Watering trays 1 & 2 for " + (currentDurationSelection / 60) + "m");
     terminal.flush();
     Blynk.virtualWrite(V3, "pick", 0);
     Blynk.virtualWrite(V4, "pick", 0);
     readyToPickDuration = true;
     readyToPickDuration = false;
     readyToStartStatus = false;
+    auto12start = true;
     currentTraySelection = 0;
+    stopTime12 = now() + currentDurationSelection;    // set the end time
     currentDurationSelection = 0;
     water12();
   }
@@ -303,7 +345,9 @@ BLYNK_WRITE(V5) // Start watering button
     readyToPickDuration = true;
     readyToPickDuration = false;
     readyToStartStatus = false;
+    auto34start = true;
     currentTraySelection = 0;
+    stopTime34 = now() + currentDurationSelection;
     currentDurationSelection = 0;
     water34();
   }
@@ -413,4 +457,3 @@ void timeSetAndCheck()
     }
   }
 }
-
