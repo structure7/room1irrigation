@@ -352,7 +352,7 @@ BLYNK_WRITE(V5) // Start watering button
   }
   else if (pinData == 1 && currentTraySelection == 34 && currentDurationSelection != 0)
   {
-    terminal.println(String(currentTime) + " Watering trays 3 & 4 for " + currentDurationSelection + "m");
+    terminal.println(String(currentTime) + " Watering trays 3 & 4 for " + (currentDurationSelection / 60) + "m");
     terminal.flush();
     Blynk.virtualWrite(V3, "pick", 0);
     Blynk.virtualWrite(V4, "pick", 0);
@@ -385,20 +385,20 @@ BLYNK_WRITE(V8) // Emergency stop
 {
   int pinData = param.asInt();
 
-  if (pinData == 1 && man12run == true && man34run == true)
+  if (pinData == 1 && ( (man12run == true && man34run == true) || (man12run == true && auto34run == true) || (auto12run == true && auto34run == true) || ( (auto12run == true && man34run == true) ) ))
   {
     digitalWrite(room1trays12, LOW);
     Blynk.virtualWrite(V0, 0);
     Blynk.syncVirtual(V0);
-    timer.setTimeout(2000, v8part2);
+    timer.setTimeout(1000, v8part2);
   }
-  else if (pinData == 1 && man12run == true && man34run == false)
+  else if (pinData == 1 && ( (man12run == true && man34run == false ) || ( auto12run == true && auto34run == false ) || ( man12run == true && auto34run == false ) || ( auto12run == true && man34run == false ) ))
   {
     digitalWrite(room1trays12, LOW);
     Blynk.virtualWrite(V0, 0);
     Blynk.syncVirtual(V0);
   }
-  else if (pinData == 1 && man12run == false && man34run == true)
+  else if (pinData == 1 && ( (man12run == false && man34run == true) || ( auto12run == false && auto34run == true ) || ( man12run == false && auto34run == true ) || ( auto12run == false && man34run == true ) ))
   {
     digitalWrite(room1trays34, LOW);
     Blynk.virtualWrite(V1, 0);
