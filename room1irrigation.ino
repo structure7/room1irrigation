@@ -213,15 +213,19 @@ void stopWatcher() {
   // Updates the status label in the app depending on which combinations of situations are true or false
   if ( (man12run == true && man34run == true) || (man12run == true && auto34run == true) || (auto12run == true && auto34run == true) || ( (auto12run == true && man34run == true) )) {
     Blynk.virtualWrite(V7, String("Tray 1/2 ") + counter12string + " | Tray 3/4 " + counter34string);
+    Blynk.virtualWrite(V9, String("Tray 1/2 ") + counter12string + " | Tray 3/4 " + counter34string);   // V9 updates the master/summary page
   }
   else if ( (man12run == true && man34run == false ) || ( auto12run == true && auto34run == false ) || ( man12run == true && auto34run == false ) || ( auto12run == true && man34run == false )) {
     Blynk.virtualWrite(V7, String("Tray 1/2 ") + counter12string + " | Tray 3/4 OFF");
+    Blynk.virtualWrite(V9, String("Tray 1/2 ") + counter12string + " | Tray 3/4 OFF");
   }
   else if ( (man12run == false && man34run == true) || ( auto12run == false && auto34run == true ) || ( man12run == false && auto34run == true ) || ( auto12run == false && man34run == true )) {
     Blynk.virtualWrite(V7, String("Tray 1/2 OFF | Tray 3/4 ") + counter34string);
+    Blynk.virtualWrite(V9, String("Tray 1/2 OFF | Tray 3/4 ") + counter34string);
   }
   else {
     Blynk.virtualWrite(V7, "Watering system OFF");
+    Blynk.virtualWrite(V9, "Watering system OFF");
   }
 
   // Turns off automatic watering when timer reaches zero.
