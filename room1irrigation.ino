@@ -50,6 +50,8 @@ unsigned long startTime12, startTime34;             // Unix time when valve firs
 unsigned long stopTime12, stopTime34;               // Unix time when valve will close.
 String counter12string;
 String counter34string;
+String counterUp12string;                           // Always counts up. Used for auto timer that usually counts down, but when stops reports how long it ran for.
+String counterUp34string;
 
 void setup()
 {
@@ -170,18 +172,20 @@ void stopWatcher() {
       counter12string = String( ((now() - startTime12) / 60) ) + ":0" + ((now() - startTime12) - (60 * ((now() - startTime12) / 60)));
     }
   }
-  // Counts Trays 1 and 2 down during auto duration selection
+  // Counts Trays 1 and 2 down (and up) during auto duration selection
   else if (auto12run == true)
   {
     int i = ((stopTime12 - now()) / 60);
     if (((stopTime12 - now()) - (i * 60)) > 9) {
       counter12string = String(i) + ":" + ((stopTime12 - now()) - (i * 60));
+      counterUp12string = String( ((now() - startTime12) / 60) ) + ":" + ((now() - startTime12) - (60 * ((now() - startTime12) / 60)));
     }
     else {
       counter12string = String(i) + ":0" + ((stopTime12 - now()) - (i * 60));
+      counterUp12string = String( ((now() - startTime12) / 60) ) + ":0" + ((now() - startTime12) - (60 * ((now() - startTime12) / 60)));
     }
   }
-  
+
   // Counts Trays 3 and 4 up during manual button press
   if (man34run == true)
   {
@@ -192,15 +196,17 @@ void stopWatcher() {
       counter34string = String( ((now() - startTime34) / 60) ) + ":0" + ((now() - startTime34) - (60 * ((now() - startTime34) / 60)));
     }
   }
-  // Counts Trays 3 and 4 down during auto duration selection
+  // Counts Trays 3 and 4 down (and up) during auto duration selection
   else if (auto34run == true)
   {
     int i = ((stopTime34 - now()) / 60);
     if (((stopTime34 - now()) - (i * 60)) > 9) {
       counter34string = String(i) + ":" + ((stopTime34 - now()) - (i * 60));
+      counterUp34string = String( ((now() - startTime34) / 60) ) + ":" + ((now() - startTime34) - (60 * ((now() - startTime34) / 60)));
     }
     else {
       counter34string = String(i) + ":0" + ((stopTime34 - now()) - (i * 60));
+      counterUp34string = String( ((now() - startTime34) / 60) ) + ":0" + ((now() - startTime34) - (60 * ((now() - startTime34) / 60)));
     }
   }
 
@@ -217,6 +223,20 @@ void stopWatcher() {
   else {
     Blynk.virtualWrite(V7, "Watering system OFF");
   }
+
+  // Turns off automatic watering when timer reaches zero.
+  if (stopTime12 <= now() && (man12run == true || auto12run == true) ) {
+    digitalWrite(room1trays12, LOW);
+    Blynk.virtualWrite(V0, 0);
+    Blynk.syncVirtual(V0);
+  }
+  if (stopTime34 <= now() && (man34run == true || auto34run == true) ) {
+  digitalWrite(room1trays34, LOW);
+    Blynk.virtualWrite(V1, 0);
+    Blynk.syncVirtual(V1);
+  }
+  
+
 }
 
 void water12() {
@@ -247,7 +267,12 @@ BLYNK_WRITE(V0)  // Trays 1 & 2 manual button
   {
     digitalWrite(room1trays12, LOW);
     Blynk.setProperty(V0, "onLabel", "MANUAL RUN");   // Placed here to queue up the correct labeling for when pinData == 1
-    terminal.println(String(currentTime) + " Trays 1 & 2 watered for " + (now() - startTime12) + "s.");
+    if (man12run == true) {
+      terminal.println(String(currentTime) + " Trays 1 & 2 watered for " + counter12string + ".");
+    }
+    else if (auto12run == true) {
+      terminal.println(String(currentTime) + " Trays 1 & 2 watered for " + counterUp12string + ".");
+    }
     terminal.flush();
     man12run = false;
     auto12run = false;
@@ -270,7 +295,12 @@ BLYNK_WRITE(V1)  // Trays 3 & 4 manual button
   {
     digitalWrite(room1trays34, LOW);
     Blynk.setProperty(V1, "onLabel", "MANUAL RUN");   // Placed here to queue up the correct labeling for when pinData == 1
-    terminal.println(String(currentTime) + " Trays 3 & 4 watered for " + (now() - startTime34) + "s.");
+    if (man34run == true) {
+      terminal.println(String(currentTime) + " Trays 3 & 4 watered for " + counter34string + ".");
+    }
+    else if (auto34run == true) {
+      terminal.println(String(currentTime) + " Trays 3 & 4 watered for " + counterUp34string + ".");
+    }
     terminal.flush();
     man34run = false;
     auto34run = false;
@@ -337,8 +367,6 @@ BLYNK_WRITE(V5) // Start watering button
 
   if (pinData == 1 && currentTraySelection == 12 && currentDurationSelection != 0)
   {
-    terminal.println(String(currentTime) + " Watering trays 1 & 2 for " + (currentDurationSelection / 60) + "m");
-    terminal.flush();
     Blynk.virtualWrite(V3, "pick", 0);
     Blynk.virtualWrite(V4, "pick", 0);
     readyToPickDuration = true;
@@ -352,8 +380,6 @@ BLYNK_WRITE(V5) // Start watering button
   }
   else if (pinData == 1 && currentTraySelection == 34 && currentDurationSelection != 0)
   {
-    terminal.println(String(currentTime) + " Watering trays 3 & 4 for " + (currentDurationSelection / 60) + "m");
-    terminal.flush();
     Blynk.virtualWrite(V3, "pick", 0);
     Blynk.virtualWrite(V4, "pick", 0);
     readyToPickDuration = true;
