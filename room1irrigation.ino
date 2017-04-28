@@ -225,12 +225,12 @@ void stopWatcher() {
   }
 
   // Turns off automatic watering when timer reaches zero.
-  if (stopTime12 <= now() && (man12run == true || auto12run == true) ) {
+  if (stopTime12 <= now() && (auto12run == true) ) {
     digitalWrite(room1trays12, LOW);
     Blynk.virtualWrite(V0, 0);
     Blynk.syncVirtual(V0);
   }
-  if (stopTime34 <= now() && (man34run == true || auto34run == true) ) {
+  if (stopTime34 <= now() && (auto34run == true) ) {
   digitalWrite(room1trays34, LOW);
     Blynk.virtualWrite(V1, 0);
     Blynk.syncVirtual(V1);
